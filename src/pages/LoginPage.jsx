@@ -13,6 +13,7 @@ import { signInSchema } from '@utils/validators';
 import { cn } from '@utils/helpers';
 import toast from 'react-hot-toast';
 import GoogleIcon from '@components/ui/GoogleIcon';
+import InstallButton from '@components/ui/InstallButton';
 
 export default function LoginPage() {
   const navigate    = useNavigate();
@@ -77,6 +78,11 @@ export default function LoginPage() {
       {/* Background glow */}
       <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[500px] h-[300px]
                       bg-gradient-radial from-neon-purple/15 to-transparent pointer-events-none" />
+
+      {/* Download / Install button — top right */}
+      <div className="fixed top-4 right-4 z-20">
+        <InstallButton />
+      </div>
 
       <motion.div
         initial={{ opacity: 0, y: 24 }}

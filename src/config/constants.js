@@ -4,11 +4,11 @@
 // ─── App metadata ─────────────────────────────────────────────────────────────
 export const APP_NAME        = 'LukeAI';
 export const APP_VERSION     = '1.0.0';
-export const APP_DESCRIPTION = 'Your personal AI assistant powered by Claude';
+export const APP_DESCRIPTION = 'Your personal AI assistant powered by Webcreatorluke';
 export const APP_URL         = import.meta.env.VITE_APP_URL || 'https://lukeai.web.app';
 
 // ─── Claude / AI ──────────────────────────────────────────────────────────────
-export const CLAUDE_MODEL          = 'claude-sonnet-4-20250514';
+export const CLAUDE_MODEL          = 'claude-sonnet-4-6';
 export const CLAUDE_MAX_TOKENS     = 4096;
 export const CLAUDE_TEMPERATURE    = 1.0;   // Claude best-effort (API default)
 export const CLAUDE_API_URL        = 'https://api.anthropic.com/v1/messages';

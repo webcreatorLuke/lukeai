@@ -123,8 +123,8 @@ function buildHeaders(apiKey) {
 async function resolveApiKey(encryptedKey, uid) {
   // Dev/demo: use env variable if set
   const envKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
+  console.log('ENV KEY CHECK:', envKey ? `${envKey.slice(0,12)}...${envKey.slice(-4)} (length ${envKey.length})` : 'MISSING/EMPTY');
   if (envKey) return envKey;
-
   if (!encryptedKey) {
     throw new Error('No API key configured. Add your Anthropic API key in Settings.');
   }

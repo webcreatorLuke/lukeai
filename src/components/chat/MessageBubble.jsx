@@ -8,11 +8,16 @@ import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { Copy, Check, User, Sparkles } from 'lucide-react';
 import { cn, copyToClipboard, formatTimestamp } from '@utils/helpers';
 import { useAuth } from '@hooks/useAuth';
+import { parseMessageForImages } from '@services/imageSearchService';
+import ChatImage from '@components/chat/ChatImage';
 
 export default function MessageBubble({ message }) {
   const { user }     = useAuth();
   const isUser       = message.role === 'user';
   const isStreaming  = message.isStreaming;
+
+  // Split assistant messages into text/image segments based on [IMAGE: ...] tags
+  const segments = !isUser ? parseMessageForImages(message.content) : null;
 
   return (
     <motion.div
@@ -46,26 +51,35 @@ export default function MessageBubble({ message }) {
             <p className="whitespace-pre-wrap break-words">{message.content}</p>
           ) : (
             <div className={cn('prose-message', isStreaming && 'typing-cursor')}>
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
-                components={{
-                  code({ node, inline, className, children, ...props }) {
-                    const match = /language-(\w+)/.exec(className || '');
-                    if (!inline && match) {
-                      return (
-                        <CodeBlock language={match[1]} code={String(children).replace(/\n$/, '')} />
-                      );
-                    }
-                    return (
-                      <code className="bg-surface-overlay text-purple-300 px-1.5 py-0.5 rounded text-xs font-mono" {...props}>
-                        {children}
-                      </code>
-                    );
-                  },
-                }}
-              >
-                {message.content}
-              </ReactMarkdown>
+              {segments.map((segment, i) => {
+                if (segment.type === 'image') {
+                  return <ChatImage key={i} query={segment.content} />;
+                }
+                if (!segment.content.trim()) return null;
+                return (
+                  <ReactMarkdown
+                    key={i}
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      code({ node, inline, className, children, ...props }) {
+                        const match = /language-(\w+)/.exec(className || '');
+                        if (!inline && match) {
+                          return (
+                            <CodeBlock language={match[1]} code={String(children).replace(/\n$/, '')} />
+                          );
+                        }
+                        return (
+                          <code className="bg-surface-overlay text-purple-300 px-1.5 py-0.5 rounded text-xs font-mono" {...props}>
+                            {children}
+                          </code>
+                        );
+                      },
+                    }}
+                  >
+                    {segment.content}
+                  </ReactMarkdown>
+                );
+              })}
             </div>
           )}
         </div>

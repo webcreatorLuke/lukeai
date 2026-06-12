@@ -1,0 +1,64 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─── Helper functions ────────────────────────────────────────────────
+    function isAuth()             { return request.auth != null; }
+    function isOwner(uid)         { return isAuth() && request.auth.uid == uid; }
+    function isValidUser()        { return isAuth() && request.auth.token.email_verified == true; }
+
+    // ─── Users ───────────────────────────────────────────────────────────
+    match /users/{uid} {
+      allow read:   if isOwner(uid);
+      allow create: if isOwner(uid) && validUserCreate();
+      allow update: if isOwner(uid) && validUserUpdate();
+      allow delete: if isOwner(uid);
+
+      function validUserCreate() {
+        let d = request.resource.data;
+        return d.uid == uid
+            && d.lukeId is string
+            && d.email  is string
+            && d.keys().hasAll(['uid','lukeId','email','displayName','provider','createdAt']);
+      }
+      function validUserUpdate() {
+        // Prevent uid and lukeId from being changed
+        return !request.resource.data.diff(resource.data).affectedKeys()
+                 .hasAny(['uid','lukeId','createdAt']);
+      }
+    }
+
+    // ─── Conversations ────────────────────────────────────────────────────
+    match /conversations/{convId} {
+      allow read, write: if isAuth() && resource == null
+                           ? request.resource.data.userId == request.auth.uid
+                           : resource.data.userId == request.auth.uid;
+    }
+
+    // ─── Messages ─────────────────────────────────────────────────────────
+    match /messages/{msgId} {
+      allow read:   if isAuth() && belongsToUserConv();
+      allow create: if isAuth() && request.resource.data.keys().hasAll(['convId','role','content','createdAt']);
+      allow delete: if isAuth() && belongsToUserConv();
+
+      function belongsToUserConv() {
+        let conv = get(/databases/$(database)/documents/conversations/$(resource.data.convId));
+        return conv.data.userId == request.auth.uid;
+      }
+    }
+
+    // ─── Passkeys ─────────────────────────────────────────────────────────
+    match /passkeys/{credId} {
+      allow read, write: if isAuth() && (
+        resource == null
+          ? request.resource.data.userId == request.auth.uid
+          : resource.data.userId == request.auth.uid
+      );
+    }
+
+    // ─── Deny everything else ─────────────────────────────────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

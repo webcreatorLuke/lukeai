@@ -1,7 +1,6 @@
 // src/config/firebase.js
 // Firebase initialization — reads credentials from .env
 // Copy .env.example → .env and fill in your Firebase project values
-
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, connectAuthEmulator } from 'firebase/auth';
 import {
@@ -23,6 +22,8 @@ const firebaseConfig = {
   appId:             import.meta.env.VITE_FIREBASE_APP_ID,
   measurementId:     import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
+
+console.log('🔥 Firebase config debug:', firebaseConfig);
 
 // ─── Initialise app (guard against hot-reload double-init) ───────────────────
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();

@@ -92,12 +92,18 @@ function ApiKeySection() {
 
   async function onSubmit({ apiKey }) {
     setSaving(true);
+    console.log('STEP 1: starting, user.uid =', user?.uid);
     try {
+      console.log('STEP 2: encrypting...');
       const enc = await encryptApiKey(apiKey, user.uid);
+      console.log('STEP 3: encrypted, saving to firestore...');
       await userService.saveApiKey(user.uid, enc);
+      console.log('STEP 4: saved to firestore');
       updateSettings({ apiKey: enc });
+      console.log('STEP 5: local state updated');
       toast.success('API key saved');
     } catch (e) {
+      console.log('ERROR:', e);
       toast.error('Failed to save key');
     } finally {
       setSaving(false);

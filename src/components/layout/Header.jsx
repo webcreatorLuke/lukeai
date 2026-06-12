@@ -4,6 +4,7 @@ import { PanelLeft, Sparkles } from 'lucide-react';
 import { useUiStore } from '@store/uiStore';
 import { useChat }   from '@hooks/useChat';
 import { useChatStore } from '@store/chatStore';
+import InstallButton from '@components/ui/InstallButton';
 
 export default function Header() {
   const { toggleSidebar } = useUiStore();
@@ -21,7 +22,6 @@ export default function Header() {
       >
         <PanelLeft size={18} />
       </button>
-
       <div className="flex-1 min-w-0">
         <h1 className="text-sm font-medium text-text-primary truncate">
           {activeConv?.title || (
@@ -32,6 +32,7 @@ export default function Header() {
           )}
         </h1>
       </div>
+      <InstallButton />
     </header>
   );
 }

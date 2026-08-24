@@ -22,9 +22,10 @@ export function useChat() {
     streaming:      store.streaming,
     error:          store.error,
     openConversation: store.openConversation,
-    sendMessage:    (content) =>
+    sendMessage:    (content, images = []) =>
       store.sendMessage({
         content,
+        images,
         userId:   authStore.user?.uid,
         userData: authStore.userData,
       }),

@@ -1,4 +1,4 @@
-// src/services/claudeService.js
+  // src/services/claudeService.js
 // Handles all communication with the Anthropic Claude API
 // Supports both streaming and non-streaming responses
 
@@ -143,10 +143,25 @@ export async function streamMessage({ messages, systemPrompt, apiKey, uid, onChu
 }
 
 // ─── Build conversation message array for the API ────────────────────────────
+// Messages with attached images become multi-part content blocks
+// (images first, then text), per Anthropic's vision API format.
 function formatMessages(messages) {
   return messages
     .filter((m) => m.role === 'user' || m.role === 'assistant')
-    .map((m) => ({ role: m.role, content: m.content }));
+    .map((m) => {
+      const images = m.images || [];
+      if (images.length === 0) {
+        return { role: m.role, content: m.content };
+      }
+      const content = [
+        ...images.map((img) => ({
+          type:   'image',
+          source: { type: 'base64', media_type: img.mediaType, data: img.data },
+        })),
+        ...(m.content ? [{ type: 'text', text: m.content }] : []),
+      ];
+      return { role: m.role, content };
+    });
 }
 
 // ─── Build request headers ────────────────────────────────────────────────────

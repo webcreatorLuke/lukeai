@@ -48,7 +48,24 @@ export default function MessageBubble({ message }) {
             : 'bg-surface-raised border border-surface-border text-text-primary rounded-tl-sm'
         )}>
           {isUser ? (
-            <p className="whitespace-pre-wrap break-words">{message.content}</p>
+            <>
+              {message.images?.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-2 justify-end">
+                  {message.images.map((img, i) => (
+                    <img
+                      key={i}
+                      src={img.dataUrl}
+                      alt="Attached"
+                      className="max-w-[160px] max-h-[160px] rounded-lg border border-white/20 object-cover cursor-pointer"
+                      onClick={() => window.open(img.dataUrl, '_blank')}
+                    />
+                  ))}
+                </div>
+              )}
+              {message.content && (
+                <p className="whitespace-pre-wrap break-words">{message.content}</p>
+              )}
+            </>
           ) : (
             <div className={cn('prose-message', isStreaming && 'typing-cursor')}>
               {segments.map((segment, i) => {

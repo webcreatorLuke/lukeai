@@ -2,7 +2,7 @@
 import {
   collection, doc, addDoc, getDoc, getDocs, updateDoc,
   deleteDoc, query, where, orderBy, limit, serverTimestamp,
-  onSnapshot, writeBatch,
+  onSnapshot, writeBatch, increment,
 } from 'firebase/firestore';
 import { db } from '@config/firebase';
 import { COLLECTIONS, MAX_CONVERSATIONS } from '@config/constants';
@@ -64,7 +64,7 @@ export const conversationService = {
     });
   },
 
-  // ─── Bump updatedAt + lastMessage preview ───────────────────────────────
+  // ─── Bump updatedAt + lastMessage preview + messageCount ────────────────
   async touch(convId, lastMessage) {
     await updateDoc(doc(db, COLLECTIONS.CONVERSATIONS, convId), {
       updatedAt:   serverTimestamp(),
@@ -73,7 +73,7 @@ export const conversationService = {
         content:   lastMessage.content.slice(0, 120),
         createdAt: serverTimestamp(),
       },
-      messageCount: /* increment handled server-side */ undefined,
+      messageCount: increment(1),
     });
   },
 

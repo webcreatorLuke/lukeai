@@ -26,7 +26,24 @@ export default function ChatPage() {
       {/* Message list */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto">
         {isEmpty ? (
-          <WelcomeScreen onSend={sendMessage} />
+          <>
+            <WelcomeScreen onSend={sendMessage} />
+            {/* Error can happen even before any message is created (e.g. not
+                signed in, or the Firestore write failed) — always show it,
+                not just once messages exist. */}
+            {error && (
+              <div className="max-w-2xl mx-auto px-4 -mt-4 pb-6">
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="text-center text-red-400 text-sm py-3 px-4
+                             bg-red-500/10 rounded-xl border border-red-500/20"
+                >
+                  {error}
+                </motion.div>
+              </div>
+            )}
+          </>
         ) : (
           <div className="max-w-3xl mx-auto px-4 py-6 space-y-2">
             <AnimatePresence initial={false}>

@@ -43,102 +43,121 @@ export const useChatStore = create((set, get) => ({
     }
   },
 
-  // ─── Send a user message and stream Claude's reply ───────────────────
-  async sendMessage({ content, userId, userData }) {
+  // ─── Send a user message (with optional images) and stream Claude's reply ──
+  // images: [{ mediaType, data, dataUrl, name }] — from utils/imageUtils.js
+  async sendMessage({ content, images = [], userId, userData }) {
     const { activeConvId, messages } = get();
-    if (!content.trim()) return;
+    if (!content.trim() && images.length === 0) return;
 
-    // Create conversation if needed
-    let convId = activeConvId;
-    if (!convId) {
-      convId = await conversationService.create(userId, content);
-      set((s) => ({
-        activeConvId: convId,
-        conversations: [
-          {
-            id:        convId,
-            title:     content.slice(0, 50),
-            updatedAt: new Date(),
-            pinned:    false,
-          },
-          ...s.conversations,
-        ],
+    try {
+      if (!userId) {
+        throw new Error('You need to be signed in to send messages.');
+      }
+
+      // Create conversation if needed
+      let convId = activeConvId;
+      if (!convId) {
+        convId = await conversationService.create(userId, content || 'Image');
+        set((s) => ({
+          activeConvId: convId,
+          conversations: [
+            {
+              id:        convId,
+              title:     (content || 'Image').slice(0, 50),
+              updatedAt: new Date(),
+              pinned:    false,
+            },
+            ...s.conversations,
+          ],
+        }));
+      }
+
+      // Strip dataUrl before persisting/sending — only mediaType + data needed
+      const imagePayload = images.map(({ mediaType, data }) => ({ mediaType, data }));
+
+      // Optimistic user message (keep dataUrl locally for instant preview)
+      const userMsg = {
+        id:        generateMessageId(),
+        convId,
+        role:      'user',
+        content,
+        images:    images.map(({ mediaType, data, dataUrl }) => ({ mediaType, data, dataUrl })),
+        createdAt: new Date(),
+      };
+      set((s) => ({ messages: [...s.messages, userMsg], error: null }));
+
+      // Persist user message (images stored as base64 on the doc)
+      await messageService.add(convId, { role: 'user', content, images: imagePayload });
+
+      // Placeholder for streaming assistant message
+      const placeholderId = generateMessageId();
+      const placeholder   = {
+        id:          placeholderId,
+        convId,
+        role:        'assistant',
+        content:     '',
+        isStreaming: true,
+        createdAt:   new Date(),
+      };
+      set((s) => ({ messages: [...s.messages, placeholder], streaming: true, streamingText: '' }));
+
+      // Build message history for Claude (include images per message)
+      const history = [...messages, userMsg].map((m) => ({
+        role:    m.role,
+        content: m.content,
+        images:  m.images || [],
       }));
+
+      await streamMessage({
+        messages:     history,
+        systemPrompt: userData?.settings?.systemPrompt || '',
+        apiKey:       userData?.settings?.apiKey || '',
+        uid:          userId,
+        onChunk(token, full) {
+          set((s) => ({
+            messages: s.messages.map((m) =>
+              m.id === placeholderId ? { ...m, content: full } : m
+            ),
+            streamingText: full,
+          }));
+        },
+        async onDone(full) {
+          try {
+            const savedId = await messageService.add(convId, {
+              role:    'assistant',
+              content: full,
+            });
+            set((s) => ({
+              streaming:     false,
+              streamingText: '',
+              messages:      s.messages.map((m) =>
+                m.id === placeholderId
+                  ? { ...m, id: savedId, content: full, isStreaming: false }
+                  : m
+              ),
+            }));
+            await conversationService.touch(convId, { role: 'assistant', content: full });
+          } catch (e) {
+            set({ streaming: false, streamingText: '', error: e.message });
+          }
+        },
+        onError(err) {
+          set((s) => ({
+            streaming:     false,
+            streamingText: '',
+            error:         err.message || 'Something went wrong talking to Claude.',
+            messages:      s.messages.filter((m) => m.id !== placeholderId),
+          }));
+        },
+      });
+    } catch (e) {
+      set({
+        streaming:     false,
+        streamingText: '',
+        loading:       false,
+        error:         e.message || 'Something went wrong sending your message.',
+      });
     }
-
-    // Optimistic user message
-    const userMsg = {
-      id:        generateMessageId(),
-      convId,
-      role:      'user',
-      content,
-      createdAt: new Date(),
-    };
-    set((s) => ({ messages: [...s.messages, userMsg] }));
-
-    // Persist user message
-    await messageService.add(convId, { role: 'user', content });
-
-    // Placeholder for streaming assistant message
-    const placeholderId = generateMessageId();
-    const placeholder   = {
-      id:          placeholderId,
-      convId,
-      role:        'assistant',
-      content:     '',
-      isStreaming: true,
-      createdAt:   new Date(),
-    };
-    set((s) => ({ messages: [...s.messages, placeholder], streaming: true, streamingText: '' }));
-
-    // Build message history for Claude
-    const history = [...messages, userMsg].map((m) => ({
-      role:    m.role,
-      content: m.content,
-    }));
-
-    let fullText = '';
-
-    await streamMessage({
-      messages:     history,
-      systemPrompt: userData?.settings?.systemPrompt || '',
-      apiKey:       userData?.settings?.apiKey || '',
-      uid:          userId,
-      onChunk(token, full) {
-        fullText = full;
-        set((s) => ({
-          messages: s.messages.map((m) =>
-            m.id === placeholderId ? { ...m, content: full } : m
-          ),
-          streamingText: full,
-        }));
-      },
-      async onDone(full) {
-        // Replace placeholder with final message
-        const savedId = await messageService.add(convId, {
-          role:    'assistant',
-          content: full,
-        });
-        set((s) => ({
-          streaming:     false,
-          streamingText: '',
-          messages:      s.messages.map((m) =>
-            m.id === placeholderId
-              ? { ...m, id: savedId, content: full, isStreaming: false }
-              : m
-          ),
-        }));
-        await conversationService.touch(convId, { role: 'assistant', content: full });
-      },
-      onError(err) {
-        set((s) => ({
-          streaming:     false,
-          streamingText: '',
-          error:         err.message,
-          messages:      s.messages.filter((m) => m.id !== placeholderId),
-        }));
-      },
-    });
   },
 
   // ─── Delete a conversation ────────────────────────────────────────────

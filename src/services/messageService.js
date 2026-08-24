@@ -8,12 +8,13 @@ import { COLLECTIONS } from '@config/constants';
 
 export const messageService = {
 
-  async add(convId, { role, content, meta = null }) {
+  async add(convId, { role, content, meta = null, images = [] }) {
     const ref = await addDoc(collection(db, COLLECTIONS.MESSAGES), {
       convId,
       role,
       content,
       meta,
+      images,      // [{ mediaType, data }] — base64, no dataUrl (redundant)
       createdAt: serverTimestamp(),
     });
     return ref.id;
@@ -26,7 +27,15 @@ export const messageService = {
       orderBy('createdAt', 'asc')
     );
     const snap = await getDocs(q);
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    return snap.docs.map((d) => {
+      const data = d.data();
+      // Rebuild dataUrl locally for display — not stored, to save space
+      const images = (data.images || []).map((img) => ({
+        ...img,
+        dataUrl: `data:${img.mediaType};base64,${img.data}`,
+      }));
+      return { id: d.id, ...data, images };
+    });
   },
 
   subscribe(convId, onChange) {
@@ -36,7 +45,14 @@ export const messageService = {
       orderBy('createdAt', 'asc')
     );
     return onSnapshot(q, (snap) => {
-      onChange(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      onChange(snap.docs.map((d) => {
+        const data = d.data();
+        const images = (data.images || []).map((img) => ({
+          ...img,
+          dataUrl: `data:${img.mediaType};base64,${img.data}`,
+        }));
+        return { id: d.id, ...data, images };
+      }));
     });
   },
 

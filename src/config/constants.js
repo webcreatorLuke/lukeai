@@ -15,11 +15,6 @@ export const CLAUDE_API_URL        = 'https://api.anthropic.com/v1/messages';
 // The API key is stored in Firestore per user or in env — never exposed client-side in prod
 // In dev you can set VITE_ANTHROPIC_API_KEY; in prod use Firebase Functions as a proxy
 
-// ─── Gemini (AI image generation) ────────────────────────────────────────────
-// Claude's own API cannot generate images, so real image generation is routed
-// to Gemini's image model instead. Set VITE_GEMINI_API_KEY to enable it.
-export const GEMINI_IMAGE_MODEL = 'gemini-3.1-flash-image';
-
 export const DEFAULT_SYSTEM_PROMPT = `You are LukeAI, a friendly and highly capable AI assistant.
 You help users with coding, writing, analysis, math, creative tasks, and general questions.
 Be concise when the user wants brevity, thorough when they want depth.

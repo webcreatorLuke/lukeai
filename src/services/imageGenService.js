@@ -1,56 +1,44 @@
 // src/services/imageGenService.js
-// Generates real AI images (not search results) using Google's Gemini image
-// generation model ("Nano Banana"). Returns a base64 data URL Claude never sees
-// or produces itself — Claude's own API has no image-generation capability, so
-// this is a separate call triggered when Claude emits a [GENERATE_IMAGE: ...] tag.
+// Generates real AI images (not search results) using OpenAI's image model
+// (gpt-image-1). Claude's own API has no image-generation capability, so this
+// is a separate call triggered when Claude emits a [GENERATE_IMAGE: ...] tag.
+//
+// OpenAI's API does not allow direct calls from a browser (no CORS support),
+// so requests are routed through a small Cloudflare Worker proxy that holds
+// the real OpenAI key server-side and forwards the prompt. See
+// cloudflare-worker/image-proxy.js in this repo for that proxy's source.
 
-import { GEMINI_IMAGE_MODEL } from '@config/constants';
-
-const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
+const PROXY_URL = import.meta.env.VITE_IMAGE_GEN_PROXY_URL;
 
 // ─── Generate an image from a text prompt ─────────────────────────────────────
-// Returns { dataUrl, mimeType } on success, or null on failure.
+// Returns { dataUrl, mimeType } on success, or { error } on failure.
 export async function generateImage(prompt) {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-
-  if (!apiKey) {
-    console.warn('[imageGenService] Missing VITE_GEMINI_API_KEY.');
-    return { error: 'No Gemini API key configured. Add VITE_GEMINI_API_KEY in Settings.' };
+  if (!PROXY_URL) {
+    console.warn('[imageGenService] Missing VITE_IMAGE_GEN_PROXY_URL.');
+    return { error: 'No image generation proxy configured. Add VITE_IMAGE_GEN_PROXY_URL in Settings.' };
   }
 
-  const url = `${GEMINI_API_BASE}/${GEMINI_IMAGE_MODEL}:generateContent`;
-
   try {
-    const response = await fetch(url, {
+    const response = await fetch(PROXY_URL, {
       method:  'POST',
-      headers: {
-        'Content-Type':  'application/json',
-        'x-goog-api-key': apiKey,
-      },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-      }),
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ prompt }),
     });
 
+    const data = await response.json().catch(() => ({}));
+
     if (!response.ok) {
-      const body = await response.json().catch(() => ({}));
-      const msg = body?.error?.message || `Image generation failed (${response.status})`;
-      console.warn('[imageGenService] Gemini request failed:', msg);
+      const msg = data?.error || `Image generation failed (${response.status})`;
+      console.warn('[imageGenService] Proxy request failed:', msg);
       return { error: msg };
     }
 
-    const data = await response.json();
-    const parts = data?.candidates?.[0]?.content?.parts || [];
-    const imagePart = parts.find((p) => p.inlineData?.data);
-
-    if (!imagePart) {
+    if (!data?.b64_json) {
       return { error: 'The model did not return an image for that prompt.' };
     }
 
-    const mimeType = imagePart.inlineData.mimeType || 'image/png';
-    const dataUrl  = `data:${mimeType};base64,${imagePart.inlineData.data}`;
-
-    return { dataUrl, mimeType };
+    const dataUrl = `data:image/jpeg;base64,${data.b64_json}`;
+    return { dataUrl, mimeType: 'image/jpeg' };
   } catch (err) {
     console.warn('[imageGenService] Error generating image:', err);
     return { error: 'Network error while generating image.' };

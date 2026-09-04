@@ -52,7 +52,7 @@ export default function GeneratedImage({ prompt }) {
     );
   }
 
-  const filename = `${prompt.replace(/[^a-z0-9]+/gi, '-').toLowerCase().slice(0, 40) || 'generated-image'}.png`;
+  const filename = `${prompt.replace(/[^a-z0-9]+/gi, '-').toLowerCase().slice(0, 40) || 'generated-image'}.jpg`;
 
   return (
     <figure className="my-2 max-w-md">

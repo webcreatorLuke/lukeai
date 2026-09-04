@@ -15,6 +15,11 @@ export const CLAUDE_API_URL        = 'https://api.anthropic.com/v1/messages';
 // The API key is stored in Firestore per user or in env — never exposed client-side in prod
 // In dev you can set VITE_ANTHROPIC_API_KEY; in prod use Firebase Functions as a proxy
 
+// ─── Gemini (AI image generation) ────────────────────────────────────────────
+// Claude's own API cannot generate images, so real image generation is routed
+// to Gemini's image model instead. Set VITE_GEMINI_API_KEY to enable it.
+export const GEMINI_IMAGE_MODEL = 'gemini-3.1-flash-image';
+
 export const DEFAULT_SYSTEM_PROMPT = `You are LukeAI, a friendly and highly capable AI assistant.
 You help users with coding, writing, analysis, math, creative tasks, and general questions.
 Be concise when the user wants brevity, thorough when they want depth.
@@ -34,7 +39,27 @@ Examples:
   [IMAGE: Eiffel Tower Paris]"
 
 Only use [IMAGE: ...] when a picture is genuinely useful — not for every message.
-Keep the search query short (2-5 words) and specific.`;
+Keep the search query short (2-5 words) and specific.
+
+You can also generate an original AI image (art, illustrations, concepts, anything
+that doesn't already exist as a real photo) using this exact format on its own line:
+[GENERATE_IMAGE: detailed description of the image to create]
+
+Use [IMAGE: ...] for real things the user wants to see (dogs, landmarks, products).
+Use [GENERATE_IMAGE: ...] when the user asks you to create/draw/generate/make an image,
+or wants something that doesn't exist as a real photo (e.g. "a cat astronaut in
+watercolor style"). Don't use both tags for the same request.
+
+You can give the user a downloadable file (code, notes, CSV, markdown, config, etc.)
+using this exact format:
+[FILE: filename.ext]
+the full file contents go here, unfenced or in a normal \`\`\` code fence — both work
+[/FILE]
+
+Use this whenever the user asks to save, download, or export something, or when a
+deliverable is naturally a standalone file rather than a chat reply (e.g. a script,
+a report, a data export). You can still briefly describe the file in your normal
+reply text before or after the [FILE: ...] block.`;
 
 // ─── Firestore collections ────────────────────────────────────────────────────
 export const COLLECTIONS = {

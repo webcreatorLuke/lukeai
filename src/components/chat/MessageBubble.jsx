@@ -8,16 +8,18 @@ import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { Copy, Check, User, Sparkles } from 'lucide-react';
 import { cn, copyToClipboard, formatTimestamp } from '@utils/helpers';
 import { useAuth } from '@hooks/useAuth';
-import { parseMessageForImages } from '@services/imageSearchService';
+import { parseMessageForContent } from '@utils/messageParser';
 import ChatImage from '@components/chat/ChatImage';
+import GeneratedImage from '@components/chat/GeneratedImage';
+import FileBlock from '@components/chat/FileBlock';
 
 export default function MessageBubble({ message }) {
   const { user }     = useAuth();
   const isUser       = message.role === 'user';
   const isStreaming  = message.isStreaming;
 
-  // Split assistant messages into text/image segments based on [IMAGE: ...] tags
-  const segments = !isUser ? parseMessageForImages(message.content) : null;
+  // Split assistant messages into text/image/file segments based on tags
+  const segments = !isUser ? parseMessageForContent(message.content) : null;
 
   return (
     <motion.div
@@ -69,8 +71,14 @@ export default function MessageBubble({ message }) {
           ) : (
             <div className={cn('prose-message', isStreaming && 'typing-cursor')}>
               {segments.map((segment, i) => {
-                if (segment.type === 'image') {
-                  return <ChatImage key={i} query={segment.content} />;
+                if (segment.type === 'image-search') {
+                  return <ChatImage key={i} query={segment.query} />;
+                }
+                if (segment.type === 'image-gen') {
+                  return <GeneratedImage key={i} prompt={segment.prompt} />;
+                }
+                if (segment.type === 'file') {
+                  return <FileBlock key={i} filename={segment.filename} content={segment.content} />;
                 }
                 if (!segment.content.trim()) return null;
                 return (

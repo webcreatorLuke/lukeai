@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=LukeAI
+Comment=Chat with Claude, with image generation and file downloads
+Exec=lukeai %U
+Icon=io.github.webcreatorLuke.LukeAI
+Terminal=false
+Type=Application
+Categories=Network;Chat;Utility;
+StartupWMClass=lukeai
